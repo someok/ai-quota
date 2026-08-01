@@ -191,7 +191,7 @@ export function renderResult(result: AccountResult, options: { verbose?: boolean
 }
 
 export function renderSeparator(): string {
-  return "─".repeat(72);
+  return color("─".repeat(72), pc.gray);
 }
 
 export function renderAccountList(accounts: readonly Account[]): string {
