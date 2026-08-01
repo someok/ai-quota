@@ -5,6 +5,8 @@ import { fileURLToPath } from "node:url";
 
 import { Command, CommanderError, InvalidArgumentError } from "commander";
 
+import packageJson from "../package.json" with { type: "json" };
+
 import {
   addAccount,
   editAccount,
@@ -125,7 +127,7 @@ export function createProgram(): Command {
   program
     .name("ai-quota")
     .description("统一查看多个 AI 服务账号的额度、余额和用量")
-    .version("0.1.0")
+    .version(packageJson.version)
     .argument("[provider]", "仅查询指定服务", providerArgument)
     .option("--account <id>", "仅查询指定账号")
     .option("--config <path>", "配置文件路径")
