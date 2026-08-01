@@ -1,0 +1,55 @@
+#!/usr/bin/expect -f
+
+set timeout 2
+set config_path "/tmp/ai-quota-terminal-test-[pid].jsonc"
+set pasted_secret "sk-pasted-test-value-1234567890"
+set transcript ""
+
+log_user 0
+spawn env AI_QUOTA_CONFIG=$config_path node dist/cli.js account add
+
+expect {
+  "选择服务" { append transcript $expect_out(buffer) }
+  timeout { puts stderr "失败：没有出现服务选择界面"; exit 1 }
+}
+send "\033\[B\033\[B\033\[B\033\[B\r"
+expect {
+  "账号 id" { append transcript $expect_out(buffer) }
+  timeout { puts stderr "失败：方向键没有完成服务选择"; exit 1 }
+}
+send "terminal-test\r"
+expect {
+  "API Key" { append transcript $expect_out(buffer) }
+  timeout { puts stderr "失败：没有进入 API Key 输入"; exit 1 }
+}
+send "$pasted_secret"
+after 100
+send "\r"
+expect {
+  "显示名称" { append transcript $expect_out(buffer) }
+  timeout { puts stderr "失败：粘贴 API Key 后没有继续"; exit 1 }
+}
+send "\r"
+expect {
+  "已添加账号" { append transcript $expect_out(buffer) }
+  timeout { puts stderr "失败：账号没有成功添加"; exit 1 }
+}
+expect {
+  eof { append transcript $expect_out(buffer) }
+  timeout { puts stderr "失败：命令没有退出"; exit 1 }
+}
+
+if {[string first $pasted_secret $transcript] >= 0} {
+  puts stderr "失败：终端输出泄露了粘贴的 API Key"
+  exit 1
+}
+set handle [open $config_path r]
+set config [read $handle]
+close $handle
+if {[string first "\"provider\": \"kimi-code\"" $config] < 0} {
+  puts stderr "失败：方向键没有选择 Kimi Code"
+  exit 1
+}
+
+puts "终端交互验证通过"
+exit 0
