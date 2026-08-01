@@ -15,10 +15,11 @@ function kimiResult(): AccountResult {
       data: {
         windows: [
           {
-            name: "周额度",
+            name: "5 小时额度",
             used: 20,
             limit: 100,
             remainingPercent: 80,
+            resetsAt: "2030-01-02T00:00:00.000Z",
           },
         ],
       },
@@ -35,7 +36,7 @@ describe("终端结果渲染", () => {
     const lines = rendered.trimEnd().split("\n");
 
     expect(lines[0]).toBe("Kimi Code · Kimi Code Plan (kimi)");
-    expect(lines[1]).toContain("周额度:");
+    expect(lines[1]).toContain("5 小时额度:");
     expect(rendered).not.toContain("查询成功");
     expect(rendered).not.toContain("缓存结果");
     expect(rendered).not.toContain("─");
@@ -46,6 +47,15 @@ describe("终端结果渲染", () => {
 
     expect(rendered).toContain("████░░░░░░░░░░░░░░░░ 20.0%");
     expect(rendered).not.toContain("80.0%");
+  });
+
+  it("按照中文双宽字符计算并对齐冒号", () => {
+    const lines = renderResult(kimiResult()).trimEnd().split("\n");
+
+    expect(lines[1]).toMatch(/^5 小时额度:/u);
+    expect(lines[2]).toMatch(/^ {6}已用:/u);
+    expect(lines[3]).toMatch(/^ {6}重置:/u);
+    expect(lines[4]).toMatch(/^ {6}采集:/u);
   });
 
   it("提供独立的账号区块分隔线", () => {

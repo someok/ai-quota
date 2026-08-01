@@ -22,6 +22,41 @@ function color(text: string, fn: (value: string) => string): string {
   return useColor() ? fn(text) : text;
 }
 
+function displayWidth(text: string): number {
+  const plain = text.replace(/\x1b\[[0-?]*[ -/]*[@-~]/gu, "");
+  let width = 0;
+  for (const character of plain) {
+    const codePoint = character.codePointAt(0) ?? 0;
+    if (/\p{Mark}/u.test(character)) continue;
+    width +=
+      codePoint >= 0x1100 &&
+      (codePoint <= 0x115f ||
+        codePoint === 0x2329 ||
+        codePoint === 0x232a ||
+        (codePoint >= 0x2e80 && codePoint <= 0xa4cf) ||
+        (codePoint >= 0xac00 && codePoint <= 0xd7a3) ||
+        (codePoint >= 0xf900 && codePoint <= 0xfaff) ||
+        (codePoint >= 0xfe10 && codePoint <= 0xfe6f) ||
+        (codePoint >= 0xff01 && codePoint <= 0xff60) ||
+        (codePoint >= 0xffe0 && codePoint <= 0xffe6))
+        ? 2
+        : 1;
+  }
+  return width;
+}
+
+function alignColons(lines: readonly string[]): string[] {
+  const labelWidths = lines.map((line) => {
+    const colon = line.indexOf(":");
+    return colon < 0 ? null : displayWidth(line.slice(0, colon));
+  });
+  const maximum = Math.max(0, ...labelWidths.filter((width): width is number => width !== null));
+  return lines.map((line, index) => {
+    const width = labelWidths[index];
+    return width === null || width === undefined ? line : `${" ".repeat(maximum - width)}${line}`;
+  });
+}
+
 function formatTime(iso: string | null | undefined): string {
   if (!iso) return "未知";
   const date = new Date(iso);
@@ -147,7 +182,7 @@ export function renderResult(result: AccountResult, options: { verbose?: boolean
     }
   }
   if (options.verbose) lines.push(`来源: ${result.response.source}`);
-  return `${lines.join("\n")}\n`;
+  return `${[lines[0], ...alignColons(lines.slice(1))].join("\n")}\n`;
 }
 
 export function renderSeparator(): string {
