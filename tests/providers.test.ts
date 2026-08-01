@@ -67,6 +67,10 @@ describe("服务响应解析器", () => {
   it("解析 Kimi 用量", () => {
     const data = parseKimiUsage({ data: { usage: { used: 2, limit: 10, reset_in: 100 }, limits: [{ name: "5h", detail: { used: 1, limit: 5 } }] } });
     expect(data.windows).toHaveLength(2);
+    expect((data.windows as Array<Record<string, unknown>>).map((window) => window.name)).toEqual([
+      "5 小时额度",
+      "周额度",
+    ]);
     expect(() => parseKimiUsage({ data: {} })).toThrow("没有可识别");
   });
 

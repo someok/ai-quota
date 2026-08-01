@@ -113,7 +113,7 @@ function genericLines(value: JsonValue, prefix = "", depth = 0): string[] {
   return [`${prefix}: ${scalar(value)}`];
 }
 
-function windowLines(data: Record<string, JsonValue>): string[] | null {
+function windowLines(data: Record<string, JsonValue>, showUsedTotals = true): string[] | null {
   if (!Array.isArray(data.windows)) return null;
   return data.windows.flatMap((window) => {
     if (!isObject(window)) return [];
@@ -126,7 +126,7 @@ function windowLines(data: Record<string, JsonValue>): string[] | null {
             ? 100 - window.remainingPercent
             : null;
     const lines = [`${String(window.name ?? "额度")}: ${usedPercent === null ? "—" : bar(usedPercent)}`];
-    if (typeof window.used === "number" && typeof window.limit === "number") {
+    if (showUsedTotals && typeof window.used === "number" && typeof window.limit === "number") {
       lines.push(`  已用: ${window.used} / ${window.limit}`);
     }
     if (typeof window.resetsAt === "string") lines.push(`  重置: ${formatTime(window.resetsAt)}`);
@@ -136,7 +136,7 @@ function windowLines(data: Record<string, JsonValue>): string[] | null {
 
 function dataLines(provider: ProviderId, response: ProviderSuccess): string[] {
   const data = response.data;
-  const windows = windowLines(data);
+  const windows = windowLines(data, provider !== "kimi-code");
   if (windows) return windows;
   if (provider === "deepseek" && Array.isArray(data.balances)) {
     return data.balances.flatMap((balance) => {

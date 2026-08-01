@@ -42,17 +42,17 @@ export function parseKimiUsage(payload: unknown): Record<string, JsonValue> {
   if (!isRecord(payload)) throw new Error("Kimi Code 用量响应结构不兼容");
   const body = isRecord(payload.data) ? payload.data : payload;
   const windows: Record<string, JsonValue>[] = [];
-  if (isRecord(body.usage)) {
-    const row = usageRow(body.usage, "周额度");
-    if (row) windows.push(row);
-  }
   if (Array.isArray(body.limits)) {
     body.limits.forEach((value, index) => {
       if (!isRecord(value)) return;
       const detail = isRecord(value.detail) ? value.detail : value;
-      const row = usageRow(detail, `额度 ${index + 1}`);
+      const row = usageRow(detail, index === 0 ? "5 小时额度" : `额度 ${index + 1}`);
       if (row) windows.push(row);
     });
+  }
+  if (isRecord(body.usage)) {
+    const row = usageRow(body.usage, "周额度");
+    if (row) windows.push(row);
   }
   if (windows.length === 0) throw new Error("Kimi Code 响应中没有可识别的额度窗口");
   return { windows };

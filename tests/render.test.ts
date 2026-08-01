@@ -47,15 +47,15 @@ describe("终端结果渲染", () => {
 
     expect(rendered).toContain("████░░░░░░░░░░░░░░░░ 20.0%");
     expect(rendered).not.toContain("80.0%");
+    expect(rendered).not.toContain("已用:");
   });
 
   it("按照中文双宽字符计算并对齐冒号", () => {
     const lines = renderResult(kimiResult()).trimEnd().split("\n");
 
     expect(lines[1]).toMatch(/^5 小时额度:/u);
-    expect(lines[2]).toMatch(/^ {6}已用:/u);
-    expect(lines[3]).toMatch(/^ {6}重置:/u);
-    expect(lines[4]).toMatch(/^ {6}采集:/u);
+    expect(lines[2]).toMatch(/^ {6}重置:/u);
+    expect(lines[3]).toMatch(/^ {6}采集:/u);
   });
 
   it("提供独立的账号区块分隔线", () => {
