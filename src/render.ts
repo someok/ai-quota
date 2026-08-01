@@ -173,7 +173,12 @@ export function renderResult(result: AccountResult, options: { verbose?: boolean
   const lines = [color(title, (value) => pc.bold(pc.cyan(value)))];
   if (result.response.ok) {
     if (!options.statusOnly) lines.push(...dataLines(result.provider, result.response));
-    lines.push(`采集: ${formatTime(result.response.fetchedAt)}${result.fromCache ? " · 缓存" : ` · ${result.durationMs}ms`}`);
+    lines.push(
+      color(
+        `采集: ${formatTime(result.response.fetchedAt)}${result.fromCache ? " · 缓存" : ` · ${result.durationMs}ms`}`,
+        pc.gray,
+      ),
+    );
   } else {
     lines.push(color(`查询失败: ${result.response.error}`, pc.red));
     if (result.fallback && !options.statusOnly) {
