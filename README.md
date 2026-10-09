@@ -60,8 +60,7 @@ ai-quota account remove old-account
 | --- | --- |
 | `deepseek` | `apiKey` |
 | `codex` | `accessToken`、可选 `refreshToken`、`accountId`、`expiresAt` |
-| `opencode-go` | `workspaceId`、`authCookie` |
-| `opencode-zen` | `workspaceId`、`authCookie` |
+| `opencode-go` | `authCookie` |
 | `kimi-code` | `apiKey` |
 | `xai-supergrok` | `accessToken`、可选 `refreshToken`、`expiresAt` |
 | `xai-api-platform` | `managementKey`、`teamId` |
@@ -102,7 +101,6 @@ ai-quota account add
 - DeepSeek 开放平台
 - Codex 订阅
 - OpenCode Go
-- OpenCode Zen
 - Kimi Code Plan
 - xAI SuperGrok
 - xAI 开发者平台

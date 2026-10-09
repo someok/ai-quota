@@ -1,0 +1,93 @@
+#!/usr/bin/expect -f
+
+set timeout 4
+set config_path "/tmp/ai-quota-go-terminal-test-[pid].jsonc"
+set pasted_secret "test-go-cookie-value"
+set transcript ""
+log_user 0
+
+spawn env AI_QUOTA_CONFIG=$config_path node dist/cli.js account add
+expect {
+  "选择服务" { append transcript $expect_out(buffer) }
+  timeout { puts stderr "失败：没有出现服务选择界面"; exit 1 }
+}
+send "\033\[B\033\[B\r"
+expect {
+  "账号 id" { append transcript $expect_out(buffer) }
+  timeout { puts stderr "失败：方向键没有选择 OpenCode Go"; exit 1 }
+}
+send "go-terminal\r"
+expect {
+  "auth Cookie 值" { append transcript $expect_out(buffer) }
+  timeout { puts stderr "失败：没有进入 auth Cookie 输入"; exit 1 }
+}
+send "$pasted_secret"
+after 100
+send "\r"
+expect {
+  "显示名称" { append transcript $expect_out(buffer) }
+  timeout { puts stderr "失败：粘贴 auth Cookie 后没有继续"; exit 1 }
+}
+send "\r"
+expect {
+  "已添加账号" { append transcript $expect_out(buffer) }
+  timeout { puts stderr "失败：账号没有成功添加"; exit 1 }
+}
+expect {
+  eof { append transcript $expect_out(buffer) }
+  timeout { puts stderr "失败：命令没有退出"; exit 1 }
+}
+
+foreach replacement [list "" "test-updated-cookie"] {
+  spawn env AI_QUOTA_CONFIG=$config_path node dist/cli.js account edit go-terminal
+  expect {
+    "账号 id" { append transcript $expect_out(buffer) }
+    timeout { puts stderr "失败：编辑时没有出现账号 id 提示"; exit 1 }
+  }
+  send "\r"
+  expect {
+    "显示名称" { append transcript $expect_out(buffer) }
+    timeout { puts stderr "失败：编辑时没有出现显示名称提示"; exit 1 }
+  }
+  send "\r"
+  expect {
+    "新 auth Cookie 值" { append transcript $expect_out(buffer) }
+    timeout { puts stderr "失败：编辑时没有出现 Cookie 输入"; exit 1 }
+  }
+  send "$replacement\r"
+  expect {
+    "已更新账号" { append transcript $expect_out(buffer) }
+    timeout { puts stderr "失败：账号没有成功更新"; exit 1 }
+  }
+  expect {
+    eof { append transcript $expect_out(buffer) }
+    timeout { puts stderr "失败：编辑命令没有退出"; exit 1 }
+  }
+
+  set handle [open $config_path r]
+  set config [read $handle]
+  close $handle
+  set expected_cookie [expr {$replacement eq "" ? $pasted_secret : $replacement}]
+  if {[string first $expected_cookie $config] < 0} {
+    puts stderr "失败：Cookie 留空保留或替换行为不正确"
+    exit 1
+  }
+  if {[string first "workspaceId" $config] >= 0} {
+    puts stderr "失败：Go 配置仍包含工作区编号"
+    exit 1
+  }
+}
+
+foreach forbidden [list $pasted_secret "test-updated-cookie" "工作区编号" "OpenCode Zen"] {
+  if {[string first $forbidden $transcript] >= 0} {
+    puts stderr "失败：终端包含不应显示的凭据或已移除字段"
+    exit 1
+  }
+}
+if {[string first "\"provider\": \"opencode-go\"" $config] < 0} {
+  puts stderr "失败：方向键没有选择 OpenCode Go"
+  exit 1
+}
+file delete $config_path
+puts "Go 终端账号管理验证通过"
+exit 0

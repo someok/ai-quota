@@ -7,8 +7,7 @@
 | --- | --- | --- | --- |
 | DeepSeek | 官方 API | API Key | `GET https://api.deepseek.com/user/balance` |
 | Codex | ChatGPT/Codex 用量 API | 独立 OAuth | `GET https://chatgpt.com/backend-api/wham/usage` |
-| OpenCode Go | HTML 页面 | 工作区编号 + `auth` Cookie | `/workspace/{id}/go` |
-| OpenCode Zen | HTML 页面 | 工作区编号 + `auth` Cookie | `/workspace/{id}/billing` |
+| OpenCode Go | 控制台 JSON 接口 | `auth` Cookie | `GET https://opencode.ai/console/api/go/status` |
 | Kimi Code | 用量 API | API Key | `GET https://api.kimi.com/coding/v1/usages` |
 | xAI SuperGrok | 订阅额度 API | OAuth | `GET https://cli-chat-proxy.grok.com/v1/billing?format=credits` |
 | xAI API Platform | 官方 Management API | Management Key + Team ID | 余额、月限额、历史用量三个接口 |
@@ -23,8 +22,12 @@
   公开了 `prepaid/balance`、`postpaid/spending-limits` 和 `usage`。
 - Codex 设备码、浏览器 OAuth 和刷新行为依据
   [OpenAI Codex 源码](https://github.com/openai/codex/tree/main/codex-rs/login/src)；用量接口响应、
-  OpenCode Go/Zen、Kimi、SuperGrok 和 MiMo 的当前解析形态参考
+  Kimi、SuperGrok 和 MiMo 的当前解析形态参考
   [`slkiser/opencode-quota`](https://github.com/slkiser/opencode-quota)。
+- OpenCode Go 依据 2026-10-09 用户提供的控制台响应样本及认证方式确认，使用
+  [`/console/api/go/status`](https://opencode.ai/console/api/go/status)。读取 `access.meters`
+  中的 `fiveHour`、`week`、`month`，以 `usedMicroCents / limitMicroCents` 计算使用率；
+  `resetsAt` 为 `null` 时不显示重置时间，不再依赖工作区编号或页面 HTML。
 - xAI SuperGrok 的设备码、浏览器回调与令牌刷新协议依据
   [OpenCode xAI 客户端实现](https://github.com/anomalyco/opencode/blob/dev/packages/opencode/src/plugin/xai.ts)。
 

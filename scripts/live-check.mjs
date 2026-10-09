@@ -18,11 +18,11 @@ async function main() {
     readFile(authPath, "utf8").then(JSON.parse),
   ]);
   const checks = [];
-  if (typeof go.workspaceId === "string" && typeof go.authCookie === "string") {
+  if (typeof go.authCookie === "string") {
     checks.push([
       "opencode-go",
       openCodeGoAdapter,
-      { id: "live-go", provider: "opencode-go", enabled: true, workspaceId: go.workspaceId, authCookie: go.authCookie },
+      { id: "live-go", provider: "opencode-go", enabled: true, authCookie: go.authCookie },
     ]);
   }
   const deepseek = apiKey(auth, "deepseek");

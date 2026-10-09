@@ -1,6 +1,6 @@
 import { spawnSync } from "node:child_process";
 
-const tests = ["tests/terminal-interaction.exp", "tests/terminal-secret.exp"];
+const tests = ["tests/terminal-interaction.exp", "tests/terminal-secret.exp", "tests/terminal-go.exp"];
 let failed = false;
 for (const test of tests) {
   const result = spawnSync("expect", [test], { encoding: "utf8" });

@@ -1,122 +1,79 @@
-import { request } from "../http.js";
+import { readBoundedJson, request } from "../http.js";
 import type { JsonValue, OpenCodeGoAccount, ProviderAdapter } from "../types.js";
-import { clampPercent, failure, fetchOptions, success } from "./helpers.js";
+import { clampPercent, failure, fetchOptions, isRecord, success } from "./helpers.js";
 
-interface WindowUsage {
-  usedPercent: number;
-  resetSeconds: number;
+function invalidResponse(): Error {
+  return new Error("OpenCode Go 响应结构不兼容，无法解析额度窗口");
 }
 
-const NUMBER = String.raw`(-?\d+(?:\.\d+)?)`;
+function microCents(value: unknown): bigint {
+  if (typeof value !== "string" || !/^\d+$/u.test(value)) throw invalidResponse();
+  return BigInt(value);
+}
 
-function hydrationWindow(html: string, key: string): WindowUsage | null {
-  const percentFirst = new RegExp(
-    String.raw`${key}:\$R\[\d+\]=\{[^}]*usagePercent:${NUMBER}[^}]*resetInSec:${NUMBER}[^}]*\}`,
-  ).exec(html);
-  if (percentFirst) {
-    return { usedPercent: Number(percentFirst[1]), resetSeconds: Number(percentFirst[2]) };
+export function parseOpenCodeGo(value: unknown): Record<string, JsonValue> {
+  if (!isRecord(value) || !isRecord(value.access) || !isRecord(value.access.meters)) {
+    throw invalidResponse();
   }
-  const resetFirst = new RegExp(
-    String.raw`${key}:\$R\[\d+\]=\{[^}]*resetInSec:${NUMBER}[^}]*usagePercent:${NUMBER}[^}]*\}`,
-  ).exec(html);
-  return resetFirst
-    ? { usedPercent: Number(resetFirst[2]), resetSeconds: Number(resetFirst[1]) }
-    : null;
-}
+  const meters = value.access.meters;
+  const windows = ([
+    ["fiveHour", "5 小时额度"],
+    ["week", "周额度"],
+    ["month", "月额度"],
+  ] as const).map(([key, name]) => {
+    const meter = meters[key];
+    if (!isRecord(meter)) throw invalidResponse();
+    const limit = microCents(meter.limitMicroCents);
+    const used = microCents(meter.usedMicroCents);
+    if (limit === 0n) throw invalidResponse();
 
-function durationSeconds(value: string): number | null {
-  const normalized = value
-    .toLowerCase()
-    .replace(/<!--\$-->|<!--\/-->/gu, "")
-    .replace(/resets?\s*in/iu, "")
-    .trim();
-  if (/\bnow\b/u.test(normalized)) return 0;
-  const units = [
-    [/([\d.]+)\s*days?/u, 86_400],
-    [/([\d.]+)\s*hours?/u, 3_600],
-    [/([\d.]+)\s*minutes?/u, 60],
-    [/([\d.]+)\s*seconds?/u, 1],
-  ] as const;
-  let total = 0;
-  let found = false;
-  for (const [pattern, multiplier] of units) {
-    const match = pattern.exec(normalized);
-    if (match) {
-      found = true;
-      total += Number(match[1]) * multiplier;
+    // 先用整数运算四舍五入，避免大额微美分转换为浮点数时丢失精度。
+    const rounded = (used * 1_000_000n + limit / 2n) / limit;
+    const usedPercent = Number(rounded) / 10_000;
+    if (!Number.isFinite(usedPercent)) throw invalidResponse();
+    let resetsAt: string | null = null;
+    if (meter.resetsAt !== null) {
+      if (typeof meter.resetsAt !== "string") throw invalidResponse();
+      const timestamp = Date.parse(meter.resetsAt);
+      if (!Number.isFinite(timestamp)) throw invalidResponse();
+      resetsAt = new Date(timestamp).toISOString();
     }
-  }
-  return found ? total : null;
-}
-
-function dataSlotWindows(html: string): Partial<Record<string, WindowUsage>> {
-  const result: Partial<Record<string, WindowUsage>> = {};
-  for (const item of html.split(/data-slot="usage-item"/u).slice(1)) {
-    const label = /data-slot="usage-label">([^<]+)/u.exec(item)?.[1]?.toLowerCase();
-    const used = Number(/data-slot="usage-value">[^0-9]*(\d+(?:\.\d+)?)/u.exec(item)?.[1]);
-    const resetMatch = /data-slot="(reset-time|reset-now)">([\s\S]*?)<\/span>/u.exec(item);
-    const reset = resetMatch?.[1] === "reset-now"
-      ? 0
-      : resetMatch?.[2]
-        ? durationSeconds(resetMatch[2])
-        : null;
-    if (!label || !Number.isFinite(used) || reset === null) continue;
-    const key = label.includes("rolling")
-      ? "rolling"
-      : label.includes("weekly")
-        ? "weekly"
-        : label.includes("monthly")
-          ? "monthly"
-          : null;
-    if (key) result[key] = { usedPercent: used, resetSeconds: reset };
-  }
-  return result;
-}
-
-export function parseOpenCodeGo(html: string): Record<string, JsonValue> {
-  let windows: Partial<Record<string, WindowUsage>> = {
-    rolling: hydrationWindow(html, "rollingUsage") ?? undefined,
-    weekly: hydrationWindow(html, "weeklyUsage") ?? undefined,
-    monthly: hydrationWindow(html, "monthlyUsage") ?? undefined,
-  };
-  if (!windows.rolling && !windows.weekly && !windows.monthly) windows = dataSlotWindows(html);
-  const now = Date.now();
-  const labels = { rolling: "5 小时额度", weekly: "周额度", monthly: "月额度" } as const;
-  const rows = (["rolling", "weekly", "monthly"] as const).flatMap((key) => {
-    const value = windows[key];
-    if (!value) return [];
-    return [
-      {
-        name: labels[key],
-        usedPercent: Math.max(0, value.usedPercent),
-        remainingPercent: clampPercent(100 - value.usedPercent),
-        resetsAt: new Date(now + Math.max(0, value.resetSeconds) * 1000).toISOString(),
-      },
-    ];
+    return {
+      name,
+      usedPercent,
+      remainingPercent: clampPercent(Number(1_000_000n - rounded) / 10_000),
+      resetsAt,
+    };
   });
-  if (rows.length === 0) throw new Error("OpenCode Go 页面结构已变化，无法解析额度窗口");
-  return { windows: rows };
+  return { windows };
 }
 
 export const openCodeGoAdapter: ProviderAdapter<OpenCodeGoAccount> = {
   id: "opencode-go",
   async collect(account, context) {
-    const source = `https://opencode.ai/workspace/${encodeURIComponent(account.workspaceId)}/go`;
+    const source = "https://opencode.ai/console/api/go/status";
     try {
-      const html = await request(
+      const data = await request(
         source,
         {
           method: "GET",
           headers: {
-            Accept: "text/html",
+            Accept: "application/json",
             Cookie: `auth=${account.authCookie}`,
             "User-Agent": "Mozilla/5.0 ai-quota/0.1",
           },
         },
-        async (response) => response.text(),
+        async (response) => {
+          try {
+            return await readBoundedJson(response);
+          } catch (error) {
+            if (error instanceof SyntaxError) throw new Error("OpenCode Go 响应不是有效的 JSON");
+            throw error;
+          }
+        },
         fetchOptions(account, context),
       );
-      return success(source, parseOpenCodeGo(html));
+      return success(source, parseOpenCodeGo(data));
     } catch (error) {
       return failure(source, error, account);
     }

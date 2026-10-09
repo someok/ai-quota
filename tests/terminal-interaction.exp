@@ -12,7 +12,7 @@ expect {
   "选择服务" { append transcript $expect_out(buffer) }
   timeout { puts stderr "失败：没有出现服务选择界面"; exit 1 }
 }
-send "\033\[B\033\[B\033\[B\033\[B\r"
+send "\033\[B\033\[B\033\[B\r"
 expect {
   "账号 id" { append transcript $expect_out(buffer) }
   timeout { puts stderr "失败：方向键没有完成服务选择"; exit 1 }

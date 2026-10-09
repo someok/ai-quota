@@ -4,7 +4,6 @@ export const PROVIDER_IDS = [
   "deepseek",
   "codex",
   "opencode-go",
-  "opencode-zen",
   "kimi-code",
   "xai-supergrok",
   "xai-api-platform",
@@ -45,14 +44,6 @@ export const codexAccountSchema = z.object({
 export const openCodeGoAccountSchema = z.object({
   ...commonFields,
   provider: z.literal("opencode-go"),
-  workspaceId: z.string().min(1).max(512),
-  authCookie: tokenSchema,
-});
-
-export const openCodeZenAccountSchema = z.object({
-  ...commonFields,
-  provider: z.literal("opencode-zen"),
-  workspaceId: z.string().min(1).max(512),
   authCookie: tokenSchema,
 });
 
@@ -87,7 +78,6 @@ export const accountSchema = z.discriminatedUnion("provider", [
   deepSeekAccountSchema,
   codexAccountSchema,
   openCodeGoAccountSchema,
-  openCodeZenAccountSchema,
   kimiCodeAccountSchema,
   xaiSuperGrokAccountSchema,
   xaiApiPlatformAccountSchema,
@@ -98,7 +88,6 @@ export type Account = z.infer<typeof accountSchema>;
 export type DeepSeekAccount = z.infer<typeof deepSeekAccountSchema>;
 export type CodexAccount = z.infer<typeof codexAccountSchema>;
 export type OpenCodeGoAccount = z.infer<typeof openCodeGoAccountSchema>;
-export type OpenCodeZenAccount = z.infer<typeof openCodeZenAccountSchema>;
 export type KimiCodeAccount = z.infer<typeof kimiCodeAccountSchema>;
 export type XaiSuperGrokAccount = z.infer<typeof xaiSuperGrokAccountSchema>;
 export type XaiApiPlatformAccount = z.infer<typeof xaiApiPlatformAccountSchema>;

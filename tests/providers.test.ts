@@ -3,8 +3,6 @@ import { describe, expect, it, vi } from "vitest";
 import { codexAdapter, parseCodexUsage } from "../src/providers/codex.js";
 import { deepSeekAdapter } from "../src/providers/deepseek.js";
 import { parseKimiUsage } from "../src/providers/kimi-code.js";
-import { parseOpenCodeGo } from "../src/providers/opencode-go.js";
-import { parseOpenCodeZen } from "../src/providers/opencode-zen.js";
 import { parseSuperGrok } from "../src/providers/xai-supergrok.js";
 import { parseXaiManagementResponse } from "../src/providers/xai-api-platform.js";
 import { parseMimoBalance, parseMimoDetail, parseMimoUsage } from "../src/providers/xiaomi-mimo.js";
@@ -46,22 +44,6 @@ describe("服务响应解析器", () => {
       { requestTimeoutMs: 50, verbose: false, fetchFn },
     );
     expect(new Headers(fetchFn.mock.calls[0]?.[1]?.headers).get("ChatGPT-Account-Id")).toBe("acct");
-  });
-
-  it("解析 OpenCode Go SSR 与 data-slot", () => {
-    const ssr = "rollingUsage:$R[1]={usagePercent:25,resetInSec:3600} weeklyUsage:$R[2]={resetInSec:7200,usagePercent:50}";
-    expect(parseOpenCodeGo(ssr).windows).toHaveLength(2);
-    const html = '<div data-slot="usage-item"><span data-slot="usage-label">Monthly Usage</span><span data-slot="usage-value">12.5%</span><span data-slot="reset-time">Resets in 2 days 1 hour</span></div>';
-    expect(parseOpenCodeGo(html).windows).toHaveLength(1);
-    expect(() => parseOpenCodeGo("changed")).toThrow("结构已变化");
-  });
-
-  it("解析 OpenCode Zen 账单", () => {
-    const data = parseOpenCodeZen("balance:250000000 monthlyLimit:10 monthlyUsage:50000000 $R[\"payment.list\"]=[{\"amount\":100000000}]");
-    expect(data.balanceUsd).toBe(2.5);
-    expect(data.monthlyUsageUsd).toBe(0.5);
-    expect(data.lastPaymentUsd).toBe(1);
-    expect(() => parseOpenCodeZen("changed")).toThrow("结构已变化");
   });
 
   it("解析 Kimi 用量", () => {

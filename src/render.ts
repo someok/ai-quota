@@ -7,7 +7,6 @@ const PROVIDER_LABELS: Record<ProviderId, string> = {
   deepseek: "DeepSeek",
   codex: "Codex",
   "opencode-go": "OpenCode Go",
-  "opencode-zen": "OpenCode Zen",
   "kimi-code": "Kimi Code",
   "xai-supergrok": "xAI SuperGrok",
   "xai-api-platform": "xAI API Platform",
@@ -156,13 +155,6 @@ function dataLines(provider: ProviderId, response: ProviderSuccess): string[] {
     return [
       `${String(data.period)}: ${bar(usedPercent)}`,
       `重置: ${formatTime(typeof data.resetsAt === "string" ? data.resetsAt : null)}`,
-    ];
-  }
-  if (provider === "opencode-zen") {
-    return [
-      `余额: $${Number(data.balanceUsd ?? 0).toFixed(2)}`,
-      `本月: $${Number(data.monthlyUsageUsd ?? 0).toFixed(2)} / ${data.monthlyLimitUsd === null ? "不限" : `$${Number(data.monthlyLimitUsd).toFixed(2)}`}`,
-      `最近付款: ${data.lastPaymentUsd === null ? "—" : `$${Number(data.lastPaymentUsd).toFixed(2)}`}`,
     ];
   }
   return genericLines(data);

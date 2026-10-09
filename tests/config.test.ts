@@ -8,6 +8,20 @@ import { describe, expect, it } from "vitest";
 import { ConfigError, createConfig, loadConfig, resolveConfigPath, saveConfig } from "../src/config.js";
 
 describe("配置文件", () => {
+  it.each([false, true])("Go 只需 Cookie，加载旧工作区字段不改写文件：%s", async (legacy) => {
+    const root = await mkdtemp(join(tmpdir(), "ai-quota-go-config-"));
+    const path = join(root, "config.jsonc");
+    const account = { id: "go", provider: "opencode-go", authCookie: "test-cookie", enabled: true };
+    const text = `// 保留旧配置注释\n${JSON.stringify({
+      version: 1,
+      accounts: [{ ...account, ...(legacy ? { workspaceId: "old-workspace" } : {}) }],
+    })}\n`;
+    await writeFile(path, text, { mode: 0o600 });
+    const document = await loadConfig(path);
+    expect(document.config.accounts).toEqual([account]);
+    expect(await readFile(path, "utf8")).toBe(text);
+  });
+
   it("遵守路径优先级", () => {
     expect(resolveConfigPath({ cliPath: "./a.jsonc", env: { AI_QUOTA_CONFIG: "./b.jsonc" }, home: "/h" }))
       .toMatch(/a\.jsonc$/u);
