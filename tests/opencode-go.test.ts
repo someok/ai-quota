@@ -18,7 +18,13 @@ function statusSample() {
   };
 }
 
-const account = { id: "go", provider: "opencode-go", enabled: true, authCookie: "test-go-cookie" } as const;
+const account = {
+  id: "go",
+  provider: "opencode-go",
+  enabled: true,
+  workspaceId: "wrk_01KQF7CB4BP9WHFFD5KV5FQ06W",
+  cookie: "auth=test-auth-cookie; __Host-console_session=test-console-session",
+} as const;
 const source = "https://opencode.ai/console/api/go/status";
 const context = { requestTimeoutMs: 1000, verbose: false };
 
@@ -97,7 +103,7 @@ describe("OpenCode Go JSON 接口", () => {
     expect(() => parseOpenCodeGo(sample)).toThrow("结构不兼容");
   });
 
-  it("使用新地址和 auth Cookie 获取 JSON", async () => {
+  it("使用 status 地址、x-org-id 头和完整 Cookie 获取 JSON", async () => {
     const fetchFn = vi.fn<typeof fetch>().mockResolvedValue(Response.json(statusSample()));
     const result = await openCodeGoAdapter.collect(account, { ...context, fetchFn });
     expect(result).toMatchObject({ ok: true, source, data: parseOpenCodeGo(statusSample()) });
@@ -106,16 +112,51 @@ describe("OpenCode Go JSON 接口", () => {
     expect(url).toBe(source);
     expect(init?.method).toBe("GET");
     const headers = new Headers(init?.headers);
-    expect(headers.get("Cookie")).toBe(`auth=${account.authCookie}`);
+    expect(headers.get("Cookie")).toBe(account.cookie);
+    expect(headers.get("x-org-id")).toBe(account.workspaceId);
     expect(headers.get("Accept")).toBe("application/json");
   });
 
-  it.each([401, 403, 429, 500])("处理 HTTP %i 并脱敏", async (status) => {
+  it("把粘贴 Cookie 中的换行归一化为单行", async () => {
+    const fetchFn = vi.fn<typeof fetch>().mockResolvedValue(Response.json(statusSample()));
+    await openCodeGoAdapter.collect(
+      { ...account, cookie: "auth=one;\n__Host-console_session=two\n" },
+      { ...context, fetchFn },
+    );
+    const headers = new Headers(fetchFn.mock.calls[0]?.[1]?.headers);
+    expect(headers.get("Cookie")).toBe("auth=one; __Host-console_session=two");
+  });
+
+  it("401 时提示 Cookie 需要包含控制台会话，且不重试", async () => {
+    const fetchFn = vi.fn<typeof fetch>().mockResolvedValue(new Response(`denied ${account.cookie}`, { status: 401 }));
+    const result = await openCodeGoAdapter.collect(account, { ...context, fetchFn });
+    expect(result).toMatchObject({ ok: false, error: expect.stringContaining("__Host-console_session") });
+    expect(JSON.stringify(result)).not.toContain(account.cookie);
+    expect(fetchFn).toHaveBeenCalledTimes(1);
+  });
+
+  it("400 org_required 时提示工作区编号缺失或无效", async () => {
+    const fetchFn = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response('{"_tag":"OrgRequired","message":"x-org-id is required","code":"org_required"}', { status: 400 }),
+    );
+    const result = await openCodeGoAdapter.collect(account, { ...context, fetchFn });
+    expect(result).toMatchObject({ ok: false, error: expect.stringContaining("工作区编号") });
+    expect(fetchFn).toHaveBeenCalledTimes(1);
+  });
+
+  it("404 时提示工作区不存在或无权访问", async () => {
+    const fetchFn = vi.fn<typeof fetch>().mockResolvedValue(new Response('{"_tag":"NotFound"}', { status: 404 }));
+    const result = await openCodeGoAdapter.collect(account, { ...context, fetchFn });
+    expect(result).toMatchObject({ ok: false, error: expect.stringContaining("工作区不存在") });
+    expect(fetchFn).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([403, 429, 500])("处理 HTTP %i、按需重试并脱敏", async (status) => {
     const fetchFn = vi.fn<typeof fetch>().mockImplementation(async () =>
-      new Response(`denied ${account.authCookie}`, { status }));
+      new Response(`denied ${account.cookie}`, { status }));
     const result = await openCodeGoAdapter.collect(account, { ...context, fetchFn });
     expect(result).toMatchObject({ ok: false, error: expect.stringContaining(`HTTP ${status}`) });
-    expect(JSON.stringify(result)).not.toContain(account.authCookie);
+    expect(JSON.stringify(result)).not.toContain(account.cookie);
     expect(fetchFn).toHaveBeenCalledTimes(status >= 429 ? 3 : 1);
   });
 

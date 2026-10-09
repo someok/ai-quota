@@ -30,7 +30,8 @@ async function credentials(provider: ProviderId, prompt: PromptSession): Promise
     }
     case "opencode-go":
       return {
-        authCookie: await prompt.secret("auth Cookie 值"),
+        workspaceId: await prompt.text("工作区编号", { required: true }),
+        cookie: await prompt.secret("完整 Cookie"),
       };
     case "xai-supergrok": {
       const tokens = await loginXai({ notify: (message) => process.stdout.write(`${message}\n`) });
@@ -92,8 +93,9 @@ async function editCredentials(account: Account, prompt: PromptSession): Promise
       if (await prompt.confirm("重新进行 OAuth 授权？")) return credentials(account.provider, prompt);
       return {};
     case "opencode-go": {
-      const authCookie = await prompt.secret("新 auth Cookie 值", { keepExisting: true });
-      return authCookie ? { authCookie } : {};
+      const workspaceId = await prompt.text("工作区编号", { defaultValue: account.workspaceId });
+      const cookie = await prompt.secret("新完整 Cookie", { keepExisting: true });
+      return { workspaceId, ...(cookie ? { cookie } : {}) };
     }
     case "xai-api-platform": {
       const teamId = await prompt.text("团队编号", { defaultValue: account.teamId });

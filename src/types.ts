@@ -44,7 +44,8 @@ export const codexAccountSchema = z.object({
 export const openCodeGoAccountSchema = z.object({
   ...commonFields,
   provider: z.literal("opencode-go"),
-  authCookie: tokenSchema,
+  workspaceId: z.string().min(1).max(512),
+  cookie: tokenSchema,
 });
 
 export const kimiCodeAccountSchema = z.object({

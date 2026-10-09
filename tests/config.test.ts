@@ -8,14 +8,17 @@ import { describe, expect, it } from "vitest";
 import { ConfigError, createConfig, loadConfig, resolveConfigPath, saveConfig } from "../src/config.js";
 
 describe("配置文件", () => {
-  it.each([false, true])("Go 只需 Cookie，加载旧工作区字段不改写文件：%s", async (legacy) => {
+  it("加载 Go 账号配置不改写文件并保留注释", async () => {
     const root = await mkdtemp(join(tmpdir(), "ai-quota-go-config-"));
     const path = join(root, "config.jsonc");
-    const account = { id: "go", provider: "opencode-go", authCookie: "test-cookie", enabled: true };
-    const text = `// 保留旧配置注释\n${JSON.stringify({
-      version: 1,
-      accounts: [{ ...account, ...(legacy ? { workspaceId: "old-workspace" } : {}) }],
-    })}\n`;
+    const account = {
+      id: "go",
+      provider: "opencode-go",
+      enabled: true,
+      workspaceId: "wrk_test_workspace",
+      cookie: "auth=test; __Host-console_session=test",
+    };
+    const text = `// 保留配置注释\n${JSON.stringify({ version: 1, accounts: [account] })}\n`;
     await writeFile(path, text, { mode: 0o600 });
     const document = await loadConfig(path);
     expect(document.config.accounts).toEqual([account]);

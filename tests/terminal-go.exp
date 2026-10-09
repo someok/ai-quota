@@ -18,15 +18,20 @@ expect {
 }
 send "go-terminal\r"
 expect {
-  "auth Cookie 值" { append transcript $expect_out(buffer) }
-  timeout { puts stderr "失败：没有进入 auth Cookie 输入"; exit 1 }
+  "工作区编号" { append transcript $expect_out(buffer) }
+  timeout { puts stderr "失败：没有进入工作区编号输入"; exit 1 }
+}
+send "wrk_terminal-test\r"
+expect {
+  "完整 Cookie" { append transcript $expect_out(buffer) }
+  timeout { puts stderr "失败：没有进入完整 Cookie 输入"; exit 1 }
 }
 send "$pasted_secret"
 after 100
 send "\r"
 expect {
   "显示名称" { append transcript $expect_out(buffer) }
-  timeout { puts stderr "失败：粘贴 auth Cookie 后没有继续"; exit 1 }
+  timeout { puts stderr "失败：粘贴 Cookie 后没有继续"; exit 1 }
 }
 send "\r"
 expect {
@@ -38,7 +43,8 @@ expect {
   timeout { puts stderr "失败：命令没有退出"; exit 1 }
 }
 
-foreach replacement [list "" "test-updated-cookie"] {
+foreach case [list [list "" ""] [list "test-updated-cookie" "wrk_terminal-updated"]] {
+  lassign $case replacement replacement_ws
   spawn env AI_QUOTA_CONFIG=$config_path node dist/cli.js account edit go-terminal
   expect {
     "账号 id" { append transcript $expect_out(buffer) }
@@ -51,7 +57,12 @@ foreach replacement [list "" "test-updated-cookie"] {
   }
   send "\r"
   expect {
-    "新 auth Cookie 值" { append transcript $expect_out(buffer) }
+    "工作区编号" { append transcript $expect_out(buffer) }
+    timeout { puts stderr "失败：编辑时没有出现工作区编号提示"; exit 1 }
+  }
+  send "$replacement_ws\r"
+  expect {
+    "新完整 Cookie" { append transcript $expect_out(buffer) }
     timeout { puts stderr "失败：编辑时没有出现 Cookie 输入"; exit 1 }
   }
   send "$replacement\r"
@@ -68,19 +79,24 @@ foreach replacement [list "" "test-updated-cookie"] {
   set config [read $handle]
   close $handle
   set expected_cookie [expr {$replacement eq "" ? $pasted_secret : $replacement}]
+  set expected_ws [expr {$replacement_ws eq "" ? "wrk_terminal-test" : $replacement_ws}]
   if {[string first $expected_cookie $config] < 0} {
     puts stderr "失败：Cookie 留空保留或替换行为不正确"
     exit 1
   }
-  if {[string first "workspaceId" $config] >= 0} {
-    puts stderr "失败：Go 配置仍包含工作区编号"
+  if {[string first $expected_ws $config] < 0} {
+    puts stderr "失败：工作区编号留空保留或替换行为不正确"
+    exit 1
+  }
+  if {[string first "authCookie" $config] >= 0} {
+    puts stderr "失败：Go 配置仍包含旧的 authCookie 字段"
     exit 1
   }
 }
 
-foreach forbidden [list $pasted_secret "test-updated-cookie" "工作区编号" "OpenCode Zen"] {
+foreach forbidden [list $pasted_secret "test-updated-cookie"] {
   if {[string first $forbidden $transcript] >= 0} {
-    puts stderr "失败：终端包含不应显示的凭据或已移除字段"
+    puts stderr "失败：终端包含不应显示的凭据"
     exit 1
   }
 }

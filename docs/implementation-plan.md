@@ -32,7 +32,8 @@
 
 - `deepseek`：官方余额接口。
 - `codex`：账号独立 OAuth 凭据，直接查询 ChatGPT/Codex 用量接口。
-- `opencode-go`：使用 `auth` Cookie 请求 `/console/api/go/status`，解析五小时、周、月额度。
+- `opencode-go`：使用工作区编号（`x-org-id`）与包含控制台会话的完整 Cookie 请求
+  `/console/api/go/status`，解析五小时、周、月额度。
 - `kimi-code`：接口密钥调用 `/coding/v1/usages`。
 - `xai-supergrok`：OAuth 令牌查询订阅额度。
 - `xai-api-platform`：管理密钥与团队编号查询官方余额、用量和月限额。

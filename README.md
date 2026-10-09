@@ -60,11 +60,14 @@ ai-quota account remove old-account
 | --- | --- |
 | `deepseek` | `apiKey` |
 | `codex` | `accessToken`、可选 `refreshToken`、`accountId`、`expiresAt` |
-| `opencode-go` | `authCookie` |
+| `opencode-go` | `workspaceId`、`cookie` |
 | `kimi-code` | `apiKey` |
 | `xai-supergrok` | `accessToken`、可选 `refreshToken`、`expiresAt` |
 | `xai-api-platform` | `managementKey`、`teamId` |
 | `xiaomi-mimo` | `cookie` |
+
+`opencode-go` 的工作区编号取自控制台 URL（`/console/<wrk_...>/go`），Cookie 需要包含控制台会话
+`__Host-console_session`，可直接粘贴浏览器请求头中的完整 Cookie 内容。
 
 ## 查询行为
 
